@@ -178,6 +178,125 @@ uv run pytest
 uv run pytorch-community-mcp
 ```
 
+## Copilot CLI Deployment (Cron + Email)
+
+An alternative deployment that uses GitHub Copilot CLI with the pytorch-community MCP server and sends reports via email. No OpenCode or multi-agent workflow needed.
+
+### Prerequisites
+
+- Python >= 3.11
+- [GitHub Copilot CLI](https://docs.github.com/en/copilot/copilot-in-the-cli) (`copilot --version`)
+- [uv](https://docs.astral.sh/uv/) (MCP server runner)
+- `markdown` Python package (`pip install markdown`, for HTML table rendering in emails)
+- SMTP access (e.g., corporate mail relay on port 25)
+
+### Setup
+
+**1. Clone and configure `.env`**
+
+```bash
+git clone <repo-url> ~/PyTorchInsight
+cd ~/PyTorchInsight
+cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+
+| Variable | Description | Required |
+|----------|-------------|:--------:|
+| `GITHUB_TOKEN` | GitHub PAT (repo read) | Yes |
+| `DISCOURSE_API_KEY` | PyTorch forum API key | No |
+| `DISCOURSE_API_USERNAME` | Forum username | No |
+| `REPORT_TO_EMAIL` | Test recipient email | Yes |
+| `REPORT_TO_EMAIL_PROD` | Production recipient(s) | Yes |
+| `REPORT_FROM_EMAIL` | Sender address | Yes |
+| `SMTP_MX_SERVERS` | SMTP server (e.g. `smtp.example.com`) | Yes |
+| `SMTP_PORT` | SMTP port (default: `25`) | No |
+
+**2. Configure MCP for Copilot CLI**
+
+```bash
+mkdir -p ~/.copilot
+cat > ~/.copilot/mcp-config.json << EOF
+{
+  "mcpServers": {
+    "pytorch-community": {
+      "command": "uv",
+      "args": ["run", "--directory", "$HOME/PyTorchInsight", "pytorch-community-mcp"],
+      "env": {
+        "GITHUB_TOKEN": "<YOUR_GITHUB_TOKEN>"
+      }
+    }
+  }
+}
+EOF
+```
+
+**3. Install Copilot agent definitions**
+
+```bash
+mkdir -p ~/.copilot/agents
+cp ~/.copilot/agents/pytorch-daily-report.md   # from source machine
+cp ~/.copilot/agents/pytorch-weekly-report.md   # from source machine
+```
+
+These files define the report generation prompts. They reference `user-prompt.md` in the project directory for personalization.
+
+**4. Edit `user-prompt.md`**
+
+```bash
+cp user-prompt.example.md user-prompt.md
+```
+
+Customize your role, areas of interest, priority criteria, and output format. This controls what the report highlights and filters.
+
+**5. Adjust shell scripts**
+
+Edit `generate_daily_report.sh` and `generate_weekly_report.sh`:
+- Update `PATH` to include `copilot` and `uv` binaries
+- Update proxy settings (or remove if not behind a proxy)
+- Script directory is auto-detected, no path hardcoding needed
+
+**6. Set up cron**
+
+```bash
+crontab -e
+```
+
+Add:
+```
+# Daily report at UTC 00:00 (adjust to your timezone)
+0 0 * * * /path/to/PyTorchInsight/generate_daily_report.sh --prod
+
+# Weekly report on Sundays at UTC 12:00
+0 12 * * 0 /path/to/PyTorchInsight/generate_weekly_report.sh --prod
+```
+
+**7. Verify**
+
+```bash
+# Test run (sends to REPORT_TO_EMAIL, not REPORT_TO_EMAIL_PROD)
+cd ~/PyTorchInsight
+bash generate_daily_report.sh
+
+# Check the generated report
+ls reports/pytorch_daily_*.md
+
+# Verify cron is set
+crontab -l
+```
+
+### Verification Checklist
+
+- [ ] `.env` has all required secrets filled in
+- [ ] `~/.copilot/mcp-config.json` configured with correct project path and token
+- [ ] `~/.copilot/agents/` has `pytorch-daily-report.md` and `pytorch-weekly-report.md`
+- [ ] `copilot --version` works
+- [ ] `python3 -c "import markdown"` succeeds
+- [ ] SMTP connectivity: `telnet <smtp_server> 25`
+- [ ] `crontab -l` shows both scheduled jobs
+- [ ] Test run produces a report and sends an email
+
 ## 文档
 
 | 文档 | 说明 |
