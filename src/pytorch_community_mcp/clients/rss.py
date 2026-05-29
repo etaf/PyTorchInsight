@@ -1,13 +1,15 @@
-"""RSS feed parser for pytorch.org/feed/."""
+"""RSS feed parser for pytorch.org/blog/feed/."""
 
 from __future__ import annotations
 
 from typing import Any
+from urllib.request import Request, urlopen
 
 import feedparser
-import httpx
 
-PYTORCH_RSS_URL = "https://pytorch.org/feed/"
+PYTORCH_RSS_URL = "https://pytorch.org/blog/feed/"
+
+_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
 
 
 class RSSClient:
@@ -15,11 +17,11 @@ class RSSClient:
 
     def get_entries(self) -> list[dict[str, Any]]:
         """Parse the PyTorch RSS feed and return entries."""
-        with httpx.Client() as client:
-            resp = client.get(PYTORCH_RSS_URL, timeout=15.0)
-            resp.raise_for_status()
+        req = Request(PYTORCH_RSS_URL, headers={"User-Agent": _USER_AGENT})
+        with urlopen(req, timeout=15) as resp:  # noqa: S310
+            body = resp.read().decode()
 
-        feed = feedparser.parse(resp.text)
+        feed = feedparser.parse(body)
         entries = []
         for entry in feed.entries:
             published = ""
