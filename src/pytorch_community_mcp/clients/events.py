@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Any
-
-import httpx
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 EVENTS_API_BASE = "https://pytorch.org/wp-json/tribe/events/v1/events"
 
+_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+
 
 class EventsClient:
-    """httpx client for PyTorch Events API (WordPress TEC REST)."""
+    """Client for the PyTorch Events API (WordPress TEC REST)."""
 
     async def get_events(
         self,
@@ -32,13 +36,12 @@ class EventsClient:
         if featured is not None:
             params["featured"] = str(featured).lower()
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                EVENTS_API_BASE,
-                params=params,
-                timeout=30.0,
-            )
-            resp.raise_for_status()
-
-        data = resp.json()
+        data = await asyncio.to_thread(self._fetch, params)
         return data.get("events", [])
+
+    @staticmethod
+    def _fetch(params: dict[str, Any]) -> dict[str, Any]:
+        url = f"{EVENTS_API_BASE}?{urlencode(params)}"
+        req = Request(url, headers={"User-Agent": _USER_AGENT})
+        with urlopen(req, timeout=30) as resp:  # noqa: S310
+            return json.loads(resp.read().decode())
