@@ -38,6 +38,7 @@ DATE=$(date +%Y-%m-%d)
 SINCE=$(date -d '7 days ago' +%Y-%m-%d)
 REPORT_FILE="${REPORT_DIR}/pytorch_weekly_${DATE}.md"
 LOG_FILE="${REPORT_DIR}/.generate_weekly_${DATE}.log"
+COPILOT_WEEKLY_MODEL="${COPILOT_WEEKLY_MODEL:-${COPILOT_MODEL:-auto}}"
 
 # copilot CLI 认证：使用 gh auth login 的 OAuth 缓存
 unset COPILOT_GITHUB_TOKEN 2>/dev/null || true
@@ -52,12 +53,13 @@ fi
 
 mkdir -p "$REPORT_DIR"
 
-echo "[$(date)] Generating weekly report (${SINCE} ~ ${DATE})..." | tee "$LOG_FILE"
+echo "[$(date)] Generating weekly report (${SINCE} ~ ${DATE}) with model: ${COPILOT_WEEKLY_MODEL}" | tee "$LOG_FILE"
 
 cd "$SCRIPT_DIR"
 
 copilot -p "Generate PyTorch community weekly report for ${SINCE} to ${DATE}, save to ${REPORT_FILE}" \
     --agent pytorch-weekly-report \
+    --model "${COPILOT_WEEKLY_MODEL}" \
     --allow-tool='pytorch-community' \
     --allow-tool='write' \
     --deny-tool='shell' \

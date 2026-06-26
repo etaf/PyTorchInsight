@@ -37,6 +37,7 @@ REPORT_DIR="${SCRIPT_DIR}/reports"
 DATE=$(date +%Y-%m-%d)
 REPORT_FILE="${REPORT_DIR}/pytorch_daily_${DATE}.md"
 LOG_FILE="${REPORT_DIR}/.generate_${DATE}.log"
+COPILOT_DAILY_MODEL="${COPILOT_DAILY_MODEL:-${COPILOT_MODEL:-auto}}"
 
 # copilot CLI 认证：使用 gh auth login 的 OAuth 缓存
 # classic PAT (ghp_) 不被 copilot CLI 接受，必须 unset 所有 token 变量以免干扰
@@ -53,7 +54,7 @@ fi
 
 mkdir -p "$REPORT_DIR"
 
-echo "[$(date)] Generating daily report..." | tee "$LOG_FILE"
+echo "[$(date)] Generating daily report with model: ${COPILOT_DAILY_MODEL}" | tee "$LOG_FILE"
 
 # 使用 Copilot CLI programmatic 模式
 # --agent: 使用日报生成专用 agent
@@ -62,6 +63,7 @@ cd "$SCRIPT_DIR"
 
 copilot -p "Generate today's (${DATE}) PyTorch community daily report, save to ${REPORT_FILE}" \
     --agent pytorch-daily-report \
+    --model "${COPILOT_DAILY_MODEL}" \
     --allow-tool='pytorch-community' \
     --allow-tool='write' \
     --deny-tool='shell' \
